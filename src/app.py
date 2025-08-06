@@ -45,7 +45,7 @@ def handle_hello():
 
     return jsonify(response_body), 200
 
-@app.rout('/people', methods=['GET'])
+@app.route('/people', methods=['GET'])
 def get_people(): 
     
     peoples = People.query.all()
@@ -53,6 +53,35 @@ def get_people():
     return jsonify([
         people.serialize() for people in peoples
     ]), 200
+
+@app.route('/people/<int:people_id>', methods=['GET'])
+def get_people_id(people_id): 
+
+    people = People.query.get(people_id)
+
+    if people is None: 
+        return jsonify({"error": "Person not found"}), 404
+    
+    return jsonify(people.serialize()), 200
+
+
+@app.route('/planet', methods=['GET'])
+def get_planet(): 
+    planets = Planet.query.all()
+
+    return jsonify([
+        planet.serialize() for planet in planets
+    ]), 200
+
+@app.route('/planet/<int:planet_id>', methods=['GET'])
+def get_planet_id(planet_id):
+    planet = Planet.query.get(planet_id)
+
+    if planet is None: 
+        return jsonify({"error": "planet not found"}), 404
+
+    return jsonify(planet.serialize()), 200
+    
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
