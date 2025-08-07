@@ -81,7 +81,86 @@ def get_planet_id(planet_id):
         return jsonify({"error": "planet not found"}), 404
 
     return jsonify(planet.serialize()), 200
+
+@app.route('/vehicle', methods=['GET'])
+def get_vehicle(): 
+    vehicles = Vehicle.query.all()
+
+    return jsonify([
+        vehicle.serialize() for vehicle in vehicles
+    ]), 200
+
+@app.route('/vehicle/<int:vehicle_id>', methods=['GET'])
+def get_vehicle_id(vehicle_id):
+    vehicle = Vehicle.query.get(vehicle_id)
+
+    if vehicle is None: 
+        return jsonify({"error": "Vehicle not found"}), 404
+
+    return jsonify(vehicle.serialize()), 200
     
+@app.route('/vehicle/', methods=['POST'])
+def create_vehicle(): 
+    data = request.get_json()
+
+    required_fileds = ['name', 'model', 'price', 'manufacturer']
+    for field in required_fileds: 
+        if field not in data or data[field] is None: 
+            return jsonify({"error": f"Field '{field} is required"}), 400
+        
+    new_vehicle = Vehicle(
+        name=data['name'], 
+        model=data['model'],
+        price=data['price'],
+        manufacturer=data['manufacturer']
+        )
+
+    db.session.add(new_vehicle)
+    db.session.commit()
+
+    return jsonify(new_vehicle.serialize()), 201
+
+@app.route('/people/', methods=['POST'])
+def create_people(): 
+    data = request.get_json() 
+
+    required_fields = ['name', 'origin', 'eye_color', 'gender']
+    for field in required_fields: 
+        if field not in data or data[field] is None: 
+            return jsonify({"error": f"Field '{field}' is required"}), 400
+        
+    new_people = People(
+        name=data['name'],
+        origin=data['origin'],
+        eye_color=data['eye_color'],
+        gender=data['gender']
+    )
+
+    db.session.add(new_people)
+    db.session.commit()
+    return jsonify(new_people.serialize()), 201
+
+
+@app.route('/planet/', methods=['POST'])
+def create_planet():
+    data= request.get_json()
+
+    required_fields = ['name', 'climate', 'diameter', 'population']
+    for field in required_fields: 
+        if field not in data or data[field] is None: 
+            return jsonify({"error": f"Field '{field}' is required"}), 400
+        
+    new_planet = Planet(
+        name=data['name'],
+        climate=data['climate'],
+        diameter=data['diameter'],
+        population=data['population']
+    )
+
+    db.session.add(new_planet)
+    db.session.commit()
+
+    return jsonify(new_planet.serialize()), 201
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
