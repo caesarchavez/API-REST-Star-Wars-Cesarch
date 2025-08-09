@@ -9,14 +9,15 @@ from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
 from models import db, User, Vehicle, People, Planet, Favorite
-#from models import Person
+# from models import Person
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
 db_url = os.getenv("DATABASE_URL")
 if db_url is not None:
-    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace("postgres://", "postgresql://")
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace(
+        "postgres://", "postgresql://")
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -27,108 +28,130 @@ CORS(app)
 setup_admin(app)
 
 # Handle/serialize errors like a JSON object
+
+
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
 # generate sitemap with all your endpoints
+
+
 @app.route('/')
 def sitemap():
     return generate_sitemap(app)
 
+
 @app.route('/user', methods=['GET'])
-def handle_hello():
+def get_user():
 
-    response_body = {
-        "msg": "Hello, this is your GET /user response "
-    }
+    users = User.query.all()
 
-    return jsonify(response_body), 200
+    return jsonify([
+        user.serialize() for user in users
+    ]), 200
+
+
+@app.route('/user/favorite', methods=['GET'])
+def get_favorite():
+
+    favorites = Favorite.query.all()
+
+    return jsonify([
+        favorite.serialize() for favorite in favorites
+    ]), 200
+
 
 @app.route('/people', methods=['GET'])
-def get_people(): 
-    
+def get_people():
+
     peoples = People.query.all()
 
     return jsonify([
         people.serialize() for people in peoples
     ]), 200
 
+
 @app.route('/people/<int:people_id>', methods=['GET'])
-def get_people_id(people_id): 
+def get_people_id(people_id):
 
     people = People.query.get(people_id)
 
-    if people is None: 
+    if people is None:
         return jsonify({"error": "Person not found"}), 404
-    
+
     return jsonify(people.serialize()), 200
 
 
 @app.route('/planet', methods=['GET'])
-def get_planet(): 
+def get_planet():
     planets = Planet.query.all()
 
     return jsonify([
         planet.serialize() for planet in planets
     ]), 200
 
+
 @app.route('/planet/<int:planet_id>', methods=['GET'])
 def get_planet_id(planet_id):
     planet = Planet.query.get(planet_id)
 
-    if planet is None: 
+    if planet is None:
         return jsonify({"error": "planet not found"}), 404
 
     return jsonify(planet.serialize()), 200
 
+
 @app.route('/vehicle', methods=['GET'])
-def get_vehicle(): 
+def get_vehicle():
     vehicles = Vehicle.query.all()
 
     return jsonify([
         vehicle.serialize() for vehicle in vehicles
     ]), 200
 
+
 @app.route('/vehicle/<int:vehicle_id>', methods=['GET'])
 def get_vehicle_id(vehicle_id):
     vehicle = Vehicle.query.get(vehicle_id)
 
-    if vehicle is None: 
+    if vehicle is None:
         return jsonify({"error": "Vehicle not found"}), 404
 
     return jsonify(vehicle.serialize()), 200
-    
-@app.route('/vehicle/', methods=['POST'])
-def create_vehicle(): 
+
+
+@app.route('/vehicle', methods=['POST'])
+def create_vehicle():
     data = request.get_json()
 
     required_fileds = ['name', 'model', 'price', 'manufacturer']
-    for field in required_fileds: 
-        if field not in data or data[field] is None: 
-            return jsonify({"error": f"Field '{field} is required"}), 400
-        
+    for field in required_fileds:
+        if field not in data or data[field] is None:
+            return jsonify({"error": f"Field '{field}' is required"}), 400
+
     new_vehicle = Vehicle(
-        name=data['name'], 
+        name=data['name'],
         model=data['model'],
         price=data['price'],
         manufacturer=data['manufacturer']
-        )
+    )
 
     db.session.add(new_vehicle)
     db.session.commit()
 
     return jsonify(new_vehicle.serialize()), 201
 
-@app.route('/people/', methods=['POST'])
-def create_people(): 
-    data = request.get_json() 
+
+@app.route('/people', methods=['POST'])
+def create_people():
+    data = request.get_json()
 
     required_fields = ['name', 'origin', 'eye_color', 'gender']
-    for field in required_fields: 
-        if field not in data or data[field] is None: 
+    for field in required_fields:
+        if field not in data or data[field] is None:
             return jsonify({"error": f"Field '{field}' is required"}), 400
-        
+
     new_people = People(
         name=data['name'],
         origin=data['origin'],
@@ -141,15 +164,15 @@ def create_people():
     return jsonify(new_people.serialize()), 201
 
 
-@app.route('/planet/', methods=['POST'])
+@app.route('/planet', methods=['POST'])
 def create_planet():
-    data= request.get_json()
+    data = request.get_json()
 
     required_fields = ['name', 'climate', 'diameter', 'population']
-    for field in required_fields: 
-        if field not in data or data[field] is None: 
+    for field in required_fields:
+        if field not in data or data[field] is None:
             return jsonify({"error": f"Field '{field}' is required"}), 400
-        
+
     new_planet = Planet(
         name=data['name'],
         climate=data['climate'],
@@ -161,6 +184,28 @@ def create_planet():
     db.session.commit()
 
     return jsonify(new_planet.serialize()), 201
+
+@app.route('/user/<int:user_id>/vehicle/<int:vehicle_id>', methods=['POST'])
+def add_favorite_vehicle(user_id, vehicle_id):
+    
+    user = User.query.get(user_id)
+    if user is None: 
+        return jsonify({"error": "user not found"}), 404
+
+    vehicle = Vehicle.query.get(vehicle_id)
+    if vehicle is None: 
+        return jsonify({"error": "vehicle not found"}), 404
+    
+    existing_favorite = Favorite.query.filter_by(user_id=user_id, vehicle_id=vehicle_id).first()
+    if existing_favorite: 
+        return jsonify({"error": "favorite already exists"}), 409 
+    
+    new_favorite = Favorite(user_id=user_id, vehicles_id=vehicle_id)
+    db.session.add(new_favorite)
+    db.session.commit()
+
+    return jsonify(new_favorite.serialize()),201
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
