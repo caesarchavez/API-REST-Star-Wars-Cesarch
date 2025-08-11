@@ -52,10 +52,10 @@ def get_user():
     ]), 200
 
 
-@app.route('/user/favorite', methods=['GET'])
-def get_favorite():
+@app.route('/favorite/<int:user_id>', methods=['GET'])
+def get_favorite(user_id):
 
-    favorites = Favorite.query.all()
+    favorites = Favorite.query.filter_by(user_id=user_id).all()
 
     return jsonify([
         favorite.serialize() for favorite in favorites
@@ -121,12 +121,30 @@ def get_vehicle_id(vehicle_id):
     return jsonify(vehicle.serialize()), 200
 
 
+@app.route('/user', methods=['POST'])
+def create_user():
+    data = request.get_json()
+
+    required_fields = ['email', 'password']
+    for field in required_fields: 
+        if field not in data or data[field] is None: 
+            return jsonify({"error": f"Field '{field}' is required"}), 400
+        
+    new_user = User(
+        email = data['email'],
+        password = data['password']
+    )
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify(new_user.serialize()),201
+
 @app.route('/vehicle', methods=['POST'])
 def create_vehicle():
     data = request.get_json()
 
-    required_fileds = ['name', 'model', 'price', 'manufacturer']
-    for field in required_fileds:
+    required_fields = ['name', 'model', 'price', 'manufacturer']
+    for field in required_fields:
         if field not in data or data[field] is None:
             return jsonify({"error": f"Field '{field}' is required"}), 400
 
@@ -200,11 +218,83 @@ def add_favorite_vehicle(user_id, vehicle_id):
     if existing_favorite: 
         return jsonify({"error": "favorite already exists"}), 409 
     
-    new_favorite = Favorite(user_id=user_id, vehicles_id=vehicle_id)
+    new_favorite = Favorite(user_id=user_id, vehicle_id=vehicle_id)
     db.session.add(new_favorite)
     db.session.commit()
 
     return jsonify(new_favorite.serialize()),201
+
+@app.route('/user/<int:user_id>/people/<int:people_id>', methods=['POST'])
+def add_favorite_people(user_id, people_id):
+
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({"error":"user not found"}), 404 
+
+    people = People.query.get(people_id)
+    if people is None: 
+        return jsonify({"error":"people not found"}), 404 
+
+    existing_favorite = Favorite.query.filter_by(user_id=user_id, people_id=people_id).first()
+    if existing_favorite: 
+        return jsonify({"error": "favorite already exists"}), 409 
+
+    new_favorite = Favorite(user_id=user_id, people_id=people_id)
+    db.session.add(new_favorite)
+    db.session.commit()
+
+    return jsonify(new_favorite.serialize()), 201 
+
+@app.route('/user/<int:user_id>/planet/<int:planet_id>', methods=['POST'])
+def add_favorite_planet(user_id, planet_id): 
+
+    user = User.query.get(user_id)
+    if user is None: 
+        return jsonify({"error": "user not found"}), 404 
+    
+    planet = Planet.query.get(planet_id)
+    if planet is None: 
+        return jsonify({"error": "planet not found"}), 404 
+
+    existing_favorite = Favorite.query.filter_by(user_id=user_id, planet_id=planet_id).first()
+    if existing_favorite: 
+        return jsonify({"error": "favorite already exists"}), 409 
+    
+    new_favorite = Favorite(user_id=user_id, planet_id=planet_id)
+    db.session.add(new_favorite)
+    db.session.commit()
+
+    return jsonify(new_favorite.serialize()), 201
+
+@app.route('/favorite/planet/<int:user_id>/<int:planet_id>', methods=['DELETE'])
+def delete_favorite_planet(user_id, planet_id):
+    favorite = Favorite.query.filter_by(user_id=user_id, planet_id=planet_id).first()
+    if favorite is None: 
+        return jsonify({"error": "favorite planet not found"}), 404
+    
+    db.session.delete(favorite)
+    db.session.commit()
+    return jsonify({"message": f"favorite planet {planet_id} deleted"}), 200
+
+@app.route('/favorite/people/<int:user_id>/<int:people_id>', methods=['DELETE'])
+def delete_favorite_people(user_id, people_id):
+    favorite = Favorite.query.filter_by(user_id=user_id, people_id=people_id).first()
+    if favorite is None: 
+        return jsonify({"error": "favorite people not found"}), 404
+    
+    db.session.delete(favorite)
+    db.session.commit()
+    return jsonify({"message" : f"favorite people {people_id} deleted"}), 200
+
+@app.route('/favorite/vehicle/<int:user_id>/<int:vehicle_id>', methods=['DELETE'])
+def delete_favorite_vehicle(user_id, vehicle_id):
+    favorite = Favorite.query.filter_by(user_id=user_id, vehicle_id=vehicle_id).first()
+    if favorite is None: 
+        return jsonify({"error": "favorite vehicle not found"}), 404
+    
+    db.session.delete(favorite)
+    db.session.commit()
+    return jsonify({"message" : f"favorite vehicle {vehicle_id} deleted"}), 200
 
 
 # this only runs if `$ python src/app.py` is executed

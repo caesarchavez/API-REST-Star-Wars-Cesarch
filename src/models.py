@@ -79,8 +79,17 @@ class Favorite(db.Model):
       planet_id: Mapped[int] = mapped_column(db.ForeignKey("planet.id"), nullable=True)
       planet = relationship("Planet", back_populates="favorite")
 
-      vehicles_id: Mapped[int] = mapped_column(db.ForeignKey("vehicle.id"), nullable=True)
+      vehicle_id: Mapped[int] = mapped_column(db.ForeignKey("vehicle.id"), nullable=True)
       vehicle = relationship("Vehicle", back_populates="favorite")
 
       user_id: Mapped[int] = mapped_column(db.ForeignKey("user.id"), nullable=True)
       user = relationship("User", back_populates="favorite")
+
+      def serialize(self):
+           return{
+                "id": self.id, 
+                "user_id": self.user_id,
+                "people_id": self.people_id,
+                "planet_id": self.planet_id, 
+                "vehicle_id": self.vehicle_id
+           }
